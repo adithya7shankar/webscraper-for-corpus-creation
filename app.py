@@ -1,6 +1,6 @@
+import os
 from flask import Flask, render_template, request, send_from_directory, flash
 import scraper  # Import the modified scraper module
-import os
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Needed for flashing messages
@@ -33,13 +33,12 @@ def index():
             if errors:
                 for error in errors:
                     flash(f"Scraping error: {error}", 'warning')
-            
-            if not markdown_content.strip() and not errors:
-                 flash('No content could be scraped from the provided URLs.', 'info')
-                 return render_template('index.html')
-            elif not markdown_content.strip() and errors: # Only errors, no content
-                return render_template('index.html')
 
+            if not markdown_content.strip() and not errors:
+                flash('No content could be scraped from the provided URLs.', 'info')
+                return render_template('index.html')
+            elif not markdown_content.strip() and errors:  # Only errors, no content
+                return render_template('index.html')
 
             if output_base_name:
                 # Remove .md if user added it, as generate_unique_filename will add it
@@ -47,7 +46,7 @@ def index():
                 output_filename = scraper.generate_unique_filename(base_name)
             else:
                 output_filename = scraper.generate_unique_filename()
-            
+
             saved_filepath = scraper.save_content_to_file(markdown_content, output_filename)
 
             if saved_filepath:

@@ -1,11 +1,11 @@
+import os
+import datetime
+import time
 import argparse
 import requests
 from bs4 import BeautifulSoup
 import html2text
-import os
-import datetime
-import time
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
 
 def generate_unique_filename(base_filename="scraped_content"):
     """Generates a unique filename by appending a timestamp."""
@@ -27,11 +27,11 @@ def scrape_urls(urls):
 
     with sync_playwright() as p:
         try:
-            browser = p.chromium.launch(headless=True) # Consider headless=False for debugging
+            browser = p.chromium.launch(headless=True)
             context = browser.new_context(
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             )
-        except Exception as e:
+        except PlaywrightError as e:
             errors.append(f"Failed to launch Playwright browser: {e}. Make sure browser binaries are installed by running 'playwright install'.")
             print(f"Failed to launch Playwright browser: {e}. Make sure browser binaries are installed by running 'playwright install'.")
             # If browser fails to launch, we can't process any URLs that need it.
@@ -140,6 +140,21 @@ def scrape_urls(urls):
                 print(error_message)
                 errors.append(error_message)
                 all_markdown_content += f"# Error scraping {url}\n\n{str(e)}\n\n---\n\n"
+            except PlaywrightTimeoutError as e:
+                error_message = f"Playwright timeout while processing {url}: {e}"
+                print(error_message)
+                errors.append(error_message)
+                all_markdown_content += f"# Playwright timeout processing {url}\n\n{str(e)}\n\n---\n\n"
+            except PlaywrightError as e:
+                error_message = f"Playwright error while processing {url}: {e}"
+                print(error_message)
+                errors.append(error_message)
+                all_markdown_content += f"# Playwright error processing {url}\n\n{str(e)}\n\n---\n\n"
+            except ValueError as e:
+                error_message = f"Value error while processing {url}: {e}"
+                print(error_message)
+                errors.append(error_message)
+                all_markdown_content += f"# Value error processing {url}\n\n{str(e)}\n\n---\n\n"
             except Exception as e: # Catch Playwright errors or other general errors
                 error_message = f"An unexpected error occurred while processing {url}: {e}"
                 print(error_message)
@@ -148,18 +163,9 @@ def scrape_urls(urls):
         
         try:
             browser.close()
-        except Exception as e:
+        except PlaywrightError as e:
             print(f"Error closing Playwright browser: {e}")
             errors.append(f"Error closing Playwright browser: {e}")
-            error_message = f"Error scraping {url}: {e}"
-            print(error_message)
-            errors.append(error_message)
-            all_markdown_content += f"# Error scraping {url}\n\n{str(e)}\n\n---\n\n"
-        except Exception as e:
-            error_message = f"An unexpected error occurred while processing {url}: {e}"
-            print(error_message)
-            errors.append(error_message)
-            all_markdown_content += f"# Unexpected error processing {url}\n\n{str(e)}\n\n---\n\n"
     
     return all_markdown_content, errors
 
